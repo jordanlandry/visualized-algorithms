@@ -7,7 +7,7 @@ export default function Sort({ algorithm }: Props) {
   const canvasRef = useRef(null);
 
   // ------------------ State ------------------
-  const [arraySize, setArraySize] = React.useState(600);
+  const [arraySize, setArraySize] = React.useState(767);
 
   const CANVAS_WIDTH = Math.floor(window.innerWidth * 0.8);
   const CANVAS_HEIGHT = 500;
@@ -20,13 +20,38 @@ export default function Sort({ algorithm }: Props) {
     return array;
   };
 
-  const [arrayToSort, setArrayToSort] = React.useState(generateRandomArray(arraySize));
+  const generateRandomColorArray = (size: number) => {
+    const array = [];
+
+    for (let i = 0; i < size; i++) {
+      let r = Math.floor(Math.random() * 256);
+      let g = Math.floor(Math.random() * 256);
+      let b = Math.floor(Math.random() * 256);
+
+      let val = "000000000";
+
+      // set val in the format of rrr,ggg,bbb, with leading zeros if necessary to make it 3 digits long each time (e.g. 000,255,000) without commas
+      val = r.toString().padStart(3, "0") + g.toString().padStart(3, "0") + b.toString().padStart(3, "0");
+      array.push(val);
+    }
+    return array;
+  };
+
+  const [numberArray, setArrayToSort] = React.useState(generateRandomArray(arraySize));
+  const [colorArray, setColorArray] = React.useState(generateRandomColorArray(arraySize));
+
+  // Temp
+  const [style, setStyle] = React.useState("color");
+
   const [ms, setMs] = React.useState(1);
   const [ctx, setCtx] = React.useState<any>();
   const [isSorting, setIsSorting] = React.useState(false);
 
+  const isSortingRef = useRef(isSorting);
+  isSortingRef.current = isSorting;
+
   // This variable is used to store the current state of the array while sorting
-  let arr = arrayToSort;
+  let arr = style === "number" ? numberArray : colorArray;
 
   // ------------------ Canvas Functions ------------------
   const WIDTH_OF_BAR = CANVAS_WIDTH / arraySize;
@@ -41,12 +66,28 @@ export default function Sort({ algorithm }: Props) {
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Draw the array
-    ctx.fillStyle = CANVAS_FG;
-    for (let i = 0; i < arr.length; i++) {
-      ctx.fillRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -arr[i]);
 
-      ctx.strokeStyle = "white";
-      ctx.strokeRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -arr[i]);
+    if (style === "number") {
+      ctx.fillStyle = CANVAS_FG;
+      for (let i = 0; i < arr.length; i++) {
+        ctx.fillRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -arr[i]);
+
+        ctx.strokeStyle = "white";
+        ctx.strokeRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -arr[i]);
+      }
+    } else if (style === "color") {
+      for (let i = 0; i < arr.length; i++) {
+        let r = Math.floor(parseInt(arr[i]) / 1000000);
+        let g = Math.floor((parseInt(arr[i]) % 1000000) / 1000);
+        let b = Math.floor(parseInt(arr[i]) % 1000);
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+
+        ctx.fillRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -CANVAS_HEIGHT);
+
+        ctx.strokeStyle = "white";
+        ctx.strokeRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -CANVAS_HEIGHT);
+      }
     }
   };
 
@@ -63,12 +104,12 @@ export default function Sort({ algorithm }: Props) {
   // Initial Draw
   useEffect(() => {
     draw();
-  }, [ctx, arrayToSort]);
+  }, [ctx, numberArray]);
 
   const runSort = async () => {
     if (isSorting) return;
-
     setIsSorting(true);
+
     if (algorithm === "bubble-sort") await bubbleSort();
     if (algorithm === "selection-sort") await selectionSort();
     if (algorithm === "insertion-sort") await insertionSort();
@@ -76,15 +117,19 @@ export default function Sort({ algorithm }: Props) {
     if (algorithm === "quick-sort") await quickSort();
 
     setIsSorting(false);
+    console.log(arr);
   };
 
   // ------------------ Helper Functions ------------------
   async function update() {
+    if (!isSortingRef.current) return;
+
     await sleep(ms);
     draw();
   }
 
   const reset = () => {
+    setIsSorting(false);
     setArrayToSort(generateRandomArray(arraySize));
   };
 
