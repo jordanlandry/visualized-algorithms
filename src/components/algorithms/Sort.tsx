@@ -41,17 +41,22 @@ export default function Sort({ algorithm }: Props) {
   const [colorArray, setColorArray] = React.useState(generateRandomColorArray(arraySize));
 
   // Temp
-  const [style, setStyle] = React.useState("color");
+  const [style, setStyle] = React.useState("number");
 
   const [ms, setMs] = React.useState(1);
   const [ctx, setCtx] = React.useState<any>();
   const [isSorting, setIsSorting] = React.useState(false);
 
+  // Step value skips frames to speed up sorting (e.g. stepValue = 2 skips every other frame), set to 0 to skip all frames
+  // (higher step value useful for slower algorithms like bubble sort) (stepValue = 0 is not instant, it's just as fast as the browser can render)
+  const [stepValue, setStepValue] = React.useState(1);
+  const stepValueRef = useRef(stepValue);
+  stepValueRef.current = stepValue;
+
   const isSortingRef = useRef(isSorting);
   isSortingRef.current = isSorting;
 
-  // This variable is used to store the current state of the array while sorting
-  let arr = style === "number" ? numberArray : colorArray;
+  let arr = numberArray;
 
   // ------------------ Canvas Functions ------------------
   const WIDTH_OF_BAR = CANVAS_WIDTH / arraySize;
@@ -66,7 +71,6 @@ export default function Sort({ algorithm }: Props) {
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Draw the array
-
     if (style === "number") {
       ctx.fillStyle = CANVAS_FG;
       for (let i = 0; i < arr.length; i++) {
@@ -77,16 +81,13 @@ export default function Sort({ algorithm }: Props) {
       }
     } else if (style === "color") {
       for (let i = 0; i < arr.length; i++) {
-        let r = Math.floor(parseInt(arr[i]) / 1000000);
-        let g = Math.floor((parseInt(arr[i]) % 1000000) / 1000);
-        let b = Math.floor(parseInt(arr[i]) % 1000);
-
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-
-        ctx.fillRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -CANVAS_HEIGHT);
-
-        ctx.strokeStyle = "white";
-        ctx.strokeRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -CANVAS_HEIGHT);
+        // let r = Math.floor(parseInt(arr[i]) / 1000000);
+        // let g = Math.floor((parseInt(arr[i]) % 1000000) / 1000);
+        // let b = Math.floor(parseInt(arr[i]) % 1000);
+        // ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        // ctx.fillRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -CANVAS_HEIGHT);
+        // ctx.strokeStyle = "white";
+        // ctx.strokeRect(i * WIDTH_OF_BAR, CANVAS_HEIGHT, WIDTH_OF_BAR, -CANVAS_HEIGHT);
       }
     }
   };
@@ -113,16 +114,23 @@ export default function Sort({ algorithm }: Props) {
     if (algorithm === "bubble-sort") await bubbleSort();
     if (algorithm === "selection-sort") await selectionSort();
     if (algorithm === "insertion-sort") await insertionSort();
-    if (algorithm === "merge-sort") await mergeSort();
     if (algorithm === "quick-sort") await quickSort();
+    if (algorithm === "jannin-sort") await janninSort();
 
     setIsSorting(false);
-    console.log(arr);
+    draw();
   };
 
   // ------------------ Helper Functions ------------------
+  let counter = 0;
+
   async function update() {
     if (!isSortingRef.current) return;
+
+    counter++;
+    if (counter % stepValueRef.current !== 0) {
+      return;
+    }
 
     await sleep(ms);
     draw();
@@ -184,52 +192,6 @@ export default function Sort({ algorithm }: Props) {
     }
   };
 
-  // ------------------ Merge Sort ------------------
-  const mergeSort = async () => {
-    const merge = async (left: number[], right: number[]) => {
-      let resultArray: number[] = [],
-        leftIndex = 0,
-        rightIndex = 0;
-
-      await update();
-
-      // We will concatenate values into the resultArray in order
-      while (leftIndex < left.length && rightIndex < right.length) {
-        if (left[leftIndex] < right[rightIndex]) {
-          resultArray.push(left[leftIndex]);
-          leftIndex++; // move left array cursor
-        } else {
-          resultArray.push(right[rightIndex]);
-          rightIndex++; // move right array cursor
-        }
-
-        await update();
-      }
-
-      // We need to concat here because there will be one element remaining
-      // from either left OR the right
-      return resultArray.concat(left.slice(leftIndex)).concat(right.slice(rightIndex));
-    };
-
-    const mergeSortHelper: any = async (unsortedArray: number[]) => {
-      if (unsortedArray.length <= 1) {
-        return unsortedArray;
-      }
-
-      const middle = Math.floor(unsortedArray.length / 2);
-
-      // split the array into left and right
-      const left = unsortedArray.slice(0, middle);
-      const right = unsortedArray.slice(middle);
-
-      await update();
-      return merge(await mergeSortHelper(left), await mergeSortHelper(right));
-    };
-
-    arr = await mergeSortHelper(arr);
-    await update();
-  };
-
   // ------------------ Quick Sort ------------------
   const quickSort = async () => {
     const partition = async (low: number, high: number) => {
@@ -268,9 +230,25 @@ export default function Sort({ algorithm }: Props) {
     await update();
   };
 
+  // ------------------ Jannin Sort ------------------
+  const janninSort = async () => {
+    alert("Jannin Sort is not implemented yet");
+  };
+
   // ------------------ Render ------------------
   return (
     <div>
+      {/* Slider for speed */}
+      <div className="slider-container">
+        <div className="slider-label">Speed</div>
+        <input
+          type="range"
+          min="1"
+          max="100"
+          value={stepValue}
+          onChange={(e) => setStepValue(parseInt(e.target.value))}
+        />
+      </div>
       <button onClick={runSort}>Sort!</button>
       <button onClick={reset}>Reset</button>
       <br />
